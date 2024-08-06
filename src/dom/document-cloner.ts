@@ -27,7 +27,7 @@ import {DebuggerType, isDebugging} from '../core/debugger';
 
 export interface CloneOptions {
     ignoreElements?: (element: Element) => boolean;
-    onclone?: (document: Document, element: HTMLElement) => void;
+    onclone?: (document: Document, element: HTMLElement[]) => void;
     allowTaint?: boolean;
 }
 
@@ -47,26 +47,26 @@ const IGNORE_ATTRIBUTE = 'data-html2canvas-ignore';
 
 export class DocumentCloner {
     private readonly scrolledElements: [Element, number, number][];
-    private readonly referenceElement: HTMLElement;
-    clonedReferenceElement?: HTMLElement;
+    private readonly referenceElements: HTMLElement[];
+    clonedReferenceElements?: HTMLElement[];
     private readonly documentElement: HTMLElement;
     private readonly counters: CounterState;
     private quoteDepth: number;
 
     constructor(
         private readonly context: Context,
-        element: HTMLElement,
+        elements: HTMLElement[],
         private readonly options: CloneConfigurations
     ) {
         this.scrolledElements = [];
-        this.referenceElement = element;
+        this.referenceElements = elements;
         this.counters = new CounterState();
         this.quoteDepth = 0;
-        if (!element.ownerDocument) {
+        if (!elements[0].ownerDocument) {
             throw new Error('Cloned element does not have an owner document');
         }
 
-        this.documentElement = this.cloneNode(element.ownerDocument.documentElement, false) as HTMLElement;
+        this.documentElement = this.cloneNode(elements[0].ownerDocument.documentElement, false) as HTMLElement;
     }
 
     toIFrame(ownerDocument: Document, windowSize: Bounds): Promise<HTMLIFrameElement> {
@@ -106,10 +106,10 @@ export class DocumentCloner {
 
             const onclone = this.options.onclone;
 
-            const referenceElement = this.clonedReferenceElement;
+            const referenceElements = this.clonedReferenceElements;
 
-            if (typeof referenceElement === 'undefined') {
-                return Promise.reject(`Error finding the ${this.referenceElement.nodeName} in the cloned document`);
+            if (typeof referenceElements === 'undefined') {
+                return Promise.reject(`Error finding the ${this.referenceElements[0].nodeName} in the cloned document`);
             }
 
             if (documentClone.fonts && documentClone.fonts.ready) {
@@ -122,7 +122,7 @@ export class DocumentCloner {
 
             if (typeof onclone === 'function') {
                 return Promise.resolve()
-                    .then(() => onclone(documentClone, referenceElement))
+                    .then(() => onclone(documentClone, referenceElements))
                     .then(() => iframe);
             }
 
@@ -132,7 +132,7 @@ export class DocumentCloner {
         documentClone.open();
         documentClone.write(`${serializeDoctype(document.doctype)}<html></html>`);
         // Chrome scrolls the parent document for some reason after the write to the cloned window???
-        restoreOwnerScroll(this.referenceElement.ownerDocument, scrollX, scrollY);
+        restoreOwnerScroll(this.referenceElements[0].ownerDocument, scrollX, scrollY);
         documentClone.replaceChild(documentClone.adoptNode(this.documentElement), documentClone.documentElement);
         documentClone.close();
 
@@ -322,8 +322,12 @@ export class DocumentCloner {
             const styleBefore = window.getComputedStyle(node, ':before');
             const styleAfter = window.getComputedStyle(node, ':after');
 
-            if (this.referenceElement === node && isHTMLElementNode(clone)) {
-                this.clonedReferenceElement = clone;
+            if (this.referenceElements.includes(node as HTMLElement) && isHTMLElementNode(clone)) {
+                if (this.clonedReferenceElements !== undefined) {
+                    this.clonedReferenceElements.push(clone);
+                } else {
+                    this.clonedReferenceElements = [clone];
+                }
             }
             if (isBodyElement(clone)) {
                 createPseudoHideStyles(clone);

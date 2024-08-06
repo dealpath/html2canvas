@@ -32,7 +32,7 @@ describe('html2canvas', () => {
 
     it('should render with an element', async () => {
         DocumentCloner.destroy = jest.fn().mockReturnValue(true);
-        await html2canvas(element);
+        await html2canvas([element]);
         expect(CanvasRenderer).toHaveBeenLastCalledWith(
             expect.objectContaining({
                 cache: expect.any(Object),
@@ -53,7 +53,7 @@ describe('html2canvas', () => {
     });
 
     it('should have transparent background with backgroundColor: null', async () => {
-        await html2canvas(element, {backgroundColor: null});
+        await html2canvas([element], {backgroundColor: null});
         expect(CanvasRenderer).toHaveBeenLastCalledWith(
             expect.anything(),
             expect.objectContaining({
@@ -64,7 +64,7 @@ describe('html2canvas', () => {
 
     it('should use existing canvas when given as option', async () => {
         const canvas = {} as HTMLCanvasElement;
-        await html2canvas(element, {canvas});
+        await html2canvas([element], {canvas});
         expect(CanvasRenderer).toHaveBeenLastCalledWith(
             expect.anything(),
             expect.objectContaining({
@@ -75,7 +75,7 @@ describe('html2canvas', () => {
 
     it('should not remove cloned window when removeContainer: false', async () => {
         DocumentCloner.destroy = jest.fn();
-        await html2canvas(element, {removeContainer: false});
+        await html2canvas([element], {removeContainer: false});
         expect(CanvasRenderer).toHaveBeenLastCalledWith(
             expect.anything(),
             expect.objectContaining({
